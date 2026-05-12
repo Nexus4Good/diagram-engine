@@ -166,7 +166,7 @@ class ContentLoader {
         for (final entry in questionsMap.entries) {
           try {
             questions[entry.key] =
-                _convertJourneyQuestion(entry.value as Map<String, dynamic>);
+                convertJourneyQuestion(entry.value as Map<String, dynamic>);
           } catch (e) {
             debugPrint('Error loading journey question ${entry.key}: $e');
           }
@@ -181,7 +181,7 @@ class ContentLoader {
   }
 
   /// Convert a journey question JSON entry to QuestionData
-  static QuestionData _convertJourneyQuestion(Map<String, dynamic> json) {
+  static QuestionData convertJourneyQuestion(Map<String, dynamic> json) {
     final correctAnswer = json['correct_answer'];
     final int correctIdx = correctAnswer is int ? correctAnswer : 0;
 
@@ -224,6 +224,7 @@ class ContentLoader {
           [],
       whyWrongExplanations: whyWrongMap,
       coreConcept: json['primary_concept'],
+      classLevel: json['class_level'] ?? 'Unknown',
     );
   }
 
