@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../models/question_data.dart';
 
+enum Confidence { low, medium, high }
+
 class QuestionPanel extends StatefulWidget {
   final QuestionData question;
   final int? selectedIndex;
@@ -9,6 +11,8 @@ class QuestionPanel extends StatefulWidget {
   final ValueChanged<int> onOptionSelected;
   final VoidCallback onCheckAnswer;
   final int? elapsedSeconds;
+  final Confidence? confidence;
+  final ValueChanged<Confidence>? onConfidenceChanged;
 
   const QuestionPanel({
     super.key,
@@ -18,6 +22,8 @@ class QuestionPanel extends StatefulWidget {
     required this.onOptionSelected,
     required this.onCheckAnswer,
     this.elapsedSeconds,
+    this.confidence,
+    this.onConfidenceChanged,
   });
 
   @override
@@ -166,7 +172,7 @@ class _QuestionPanelState extends State<QuestionPanel> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: _timerResultColor.withValues(alpha: 0.1),
+                color: _timerResultColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -246,8 +252,7 @@ class _QuestionPanelState extends State<QuestionPanel> {
           ...List.generate(q.options.length, (i) {
             final isSelected = widget.selectedIndex == i;
             final isCorrect = widget.showAnswer && i == q.correctIndex;
-            final isWrong =
-                widget.showAnswer && isSelected && !isCorrect;
+            final isWrong = widget.showAnswer && isSelected && !isCorrect;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -258,9 +263,9 @@ class _QuestionPanelState extends State<QuestionPanel> {
                 isCorrect: isCorrect,
                 isWrong: isWrong,
                 showAnswer: widget.showAnswer,
-                onTap: widget.showAnswer
-                    ? null
-                    : () => widget.onOptionSelected(i),
+                onTap:
+                    widget.showAnswer ? null : () => widget.onOptionSelected(i),
+                index: i,
               ),
             );
           }),
@@ -268,35 +273,241 @@ class _QuestionPanelState extends State<QuestionPanel> {
           const SizedBox(height: 8),
 
           // Check answer button
-          if (!widget.showAnswer && widget.selectedIndex != null)
+          if (!widget.showAnswer && widget.selectedIndex != null) ...[
+            // Confidence selector
+            const SizedBox(height: 8),
+            Text(
+              'How confident are you?',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildConfidenceButton(
+                    Confidence.low, 'Low', Colors.red.shade300),
+                const SizedBox(width: 8),
+                _buildConfidenceButton(
+                    Confidence.medium, 'Medium', Colors.orange.shade300),
+                const SizedBox(width: 8),
+                _buildConfidenceButton(
+                    Confidence.high, 'High', Colors.green.shade300),
+              ],
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: widget.onCheckAnswer,
+                onPressed:
+                    widget.confidence != null ? widget.onCheckAnswer : null,
                 icon: const Icon(Icons.check_circle_outline),
                 label: const Text('Check Answer'),
               ),
             ),
+          ],
 
           // Explanation (hidden by default, revealed on click)
-          if (widget.showAnswer && q.explanation != null) ...[
+          if (widget.showAnswer) ...[
             const SizedBox(height: 16),
-            if (!_explanationExpanded)
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      setState(() => _explanationExpanded = true),
-                  icon: const Icon(Icons.lightbulb_outline, size: 18),
-                  label: const Text('Show Explanation'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.blue.shade700,
-                    side: BorderSide(color: Colors.blue.shade300),
+            if (q.correctReason != null || q.explanation != null) ...[
+              if (!_explanationExpanded)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        setState(() => _explanationExpanded = true),
+                    icon: const Icon(Icons.lightbulb_outline, size: 18),
+                    label: const Text('Show Explanation'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue.shade700,
+                      side: BorderSide(color: Colors.blue.shade300),
+                    ),
                   ),
+                )
+              else
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Why correct
+                    if (q.correctReason != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.check_circle,
+                                    size: 16, color: Colors.green.shade700),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Why correct:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              q.correctReason!,
+                              style: TextStyle(
+                                color: Colors.green.shade900,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // Why wrong
+                    if (widget.selectedIndex != null &&
+                        q.whyWrongExplanations != null &&
+                        q.whyWrongExplanations!
+                            .containsKey(widget.selectedIndex)) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.warning_amber,
+                                    size: 16, color: Colors.red.shade700),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Why your answer is wrong:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red.shade800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              q.whyWrongExplanations![widget.selectedIndex]!,
+                              style: TextStyle(
+                                color: Colors.red.shade900,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // Common mistake
+                    if (q.commonMistake != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline,
+                                size: 14, color: Colors.orange.shade700),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                q.commonMistake!,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
+                    // Visual solution steps
+                    if (q.solutionSteps.isNotEmpty) ...[
+                      ExpansionTile(
+                        title: Text(
+                          'Visual Solution Steps',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              children:
+                                  List.generate(q.solutionSteps.length, (i) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.shade100,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '${i + 1}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          q.solutionSteps[i],
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
-              )
-            else
-              _ExplanationCard(explanation: q.explanation!),
+            ],
           ],
         ],
       ),
@@ -323,7 +534,7 @@ class _QuestionPanelState extends State<QuestionPanel> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -332,6 +543,37 @@ class _QuestionPanelState extends State<QuestionPanel> {
           color: color,
           fontSize: 12,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfidenceButton(Confidence level, String label, Color color) {
+    final isSelected = widget.confidence == level;
+    return Expanded(
+      child: GestureDetector(
+        onTap: widget.onConfidenceChanged != null
+            ? () => widget.onConfidenceChanged!(level)
+            : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade300,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              color: isSelected ? Colors.white : Colors.grey.shade700,
+            ),
+          ),
         ),
       ),
     );
@@ -378,8 +620,7 @@ class _ExplanationCardState extends State<_ExplanationCard>
     for (final line in lines) {
       if (line.trim().isEmpty) continue;
       final isStep = line.trimLeft().startsWith('Step ');
-      final isKey =
-          line.trimLeft().startsWith('Key') ||
+      final isKey = line.trimLeft().startsWith('Key') ||
           line.trimLeft().startsWith('Answer:') ||
           line.trimLeft().startsWith('Verification:');
       if (isStep) {
@@ -484,7 +725,7 @@ class _ExplanationCardState extends State<_ExplanationCard>
   }
 }
 
-class _OptionTile extends StatelessWidget {
+class _OptionTile extends StatefulWidget {
   final String label;
   final String text;
   final bool isSelected;
@@ -492,6 +733,7 @@ class _OptionTile extends StatelessWidget {
   final bool isWrong;
   final bool showAnswer;
   final VoidCallback? onTap;
+  final int index;
 
   const _OptionTile({
     required this.label,
@@ -501,7 +743,67 @@ class _OptionTile extends StatelessWidget {
     required this.isWrong,
     required this.showAnswer,
     this.onTap,
+    this.index = 0,
   });
+
+  @override
+  State<_OptionTile> createState() => _OptionTileState();
+}
+
+class _OptionTileState extends State<_OptionTile>
+    with TickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final AnimationController _bounceController;
+  late final Animation<double> _slideAnimation;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _bounceAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _bounceAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: 12.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 12.0, end: -8.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -8.0, end: 4.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 4.0, end: 0.0), weight: 1),
+    ]).animate(
+        CurvedAnimation(parent: _bounceController, curve: Curves.easeOut));
+
+    Future.delayed(Duration(milliseconds: 50 * widget.index), () {
+      if (mounted) _controller.forward();
+    });
+  }
+
+  @override
+  void didUpdateWidget(_OptionTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if ((widget.isCorrect || widget.isWrong) &&
+        !oldWidget.showAnswer &&
+        widget.showAnswer) {
+      _bounceController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _bounceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -509,15 +811,15 @@ class _OptionTile extends StatelessWidget {
     Color bgColor;
     Color labelBg;
 
-    if (isCorrect) {
+    if (widget.isCorrect) {
       borderColor = Colors.green.shade400;
       bgColor = Colors.green.shade50;
       labelBg = Colors.green;
-    } else if (isWrong) {
+    } else if (widget.isWrong) {
       borderColor = Colors.red.shade400;
       bgColor = Colors.red.shade50;
       labelBg = Colors.red;
-    } else if (isSelected) {
+    } else if (widget.isSelected) {
       borderColor = Colors.blue.shade400;
       bgColor = Colors.blue.shade50;
       labelBg = Colors.blue;
@@ -527,53 +829,71 @@ class _OptionTile extends StatelessWidget {
       labelBg = Colors.grey.shade600;
     }
 
-    return Material(
-      color: bgColor,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor, width: 1.5),
+    return AnimatedBuilder(
+      animation: Listenable.merge([_controller, _bounceController]),
+      builder: (context, child) {
+        final bounceOffset =
+            (widget.isCorrect || widget.isWrong) && widget.showAnswer
+                ? _bounceAnimation.value
+                : 0.0;
+        return Transform.translate(
+          offset: Offset(0, _slideAnimation.value + bounceOffset),
+          child: Opacity(
+            opacity: _fadeAnimation.value,
+            child: child,
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: labelBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+        );
+      },
+      child: Material(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: widget.onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor, width: 1.5),
+            ),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: labelBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    widget.label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight:
-                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.text,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: widget.isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
                   ),
                 ),
-              ),
-              if (isCorrect)
-                const Icon(Icons.check_circle, color: Colors.green, size: 22),
-              if (isWrong)
-                const Icon(Icons.cancel, color: Colors.red, size: 22),
-            ],
+                if (widget.isCorrect)
+                  const Icon(Icons.check_circle, color: Colors.green, size: 22),
+                if (widget.isWrong)
+                  const Icon(Icons.cancel, color: Colors.red, size: 22),
+              ],
+            ),
           ),
         ),
       ),

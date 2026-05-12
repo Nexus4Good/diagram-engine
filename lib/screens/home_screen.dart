@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../data/algebrica_questions.dart';
 import '../data/mock_questions.dart';
 import '../main.dart';
 import '../models/performance_tracker.dart';
+import '../models/practice_mode.dart';
 import '../models/premium_state.dart';
 import '../models/question_data.dart';
 import '../models/revision_manager.dart';
 import '../widgets/premium_gate.dart';
+import 'foundation_journey_screen.dart';
 import 'question_screen.dart';
+import 'topic_revision_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,16 +24,38 @@ class _HomeScreenState extends State<HomeScreen> {
   final PerformanceTracker _tracker = PerformanceTracker();
   final PremiumState _premiumState = PremiumState();
   final RevisionManager _revisionManager = RevisionManager();
+  PracticeMode _selectedMode = PracticeMode.learner;
 
   void _startPractice() {
+    if (_selectedMode == PracticeMode.foundationJourney) {
+      _startFoundationJourney();
+      return;
+    }
+
+    // Combine all questions for now
+    final allQuestions = [...mockQuestions, ...algebricaQuestions];
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => QuestionScreen(
-          questions: mockQuestions,
+          questions: allQuestions,
           tracker: _tracker,
           premiumState: _premiumState,
           revisionManager: _revisionManager,
+          practiceMode: _selectedMode,
+        ),
+      ),
+    );
+  }
+
+  void _startFoundationJourney() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FoundationJourneyScreen(
+          journeyId: 'geometry_foundation_journey', // Load from content
+          tracker: _tracker,
+          premiumState: _premiumState,
         ),
       ),
     );
@@ -54,6 +80,17 @@ class _HomeScreenState extends State<HomeScreen> {
           premiumState: _premiumState,
           revisionManager: _revisionManager,
           isRevisionMode: true,
+        ),
+      ),
+    );
+  }
+
+  void _startTopicRevision() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TopicRevisionScreen(
+          questions: mockQuestions,
         ),
       ),
     );
@@ -88,307 +125,390 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              // Theme toggle
-              Align(
-                alignment: Alignment.centerRight,
-                child: ValueListenableBuilder<ThemeMode>(
-                  valueListenable: themeNotifier,
-                  builder: (_, mode, child) {
-                    final isDark = mode == ThemeMode.dark;
-                    return IconButton(
-                      onPressed: () {
-                        themeNotifier.value =
-                            isDark ? ThemeMode.light : ThemeMode.dark;
-                      },
-                      icon: Icon(
-                        isDark ? Icons.light_mode : Icons.dark_mode,
-                        color: isDark
-                            ? Colors.amber.shade400
-                            : Colors.grey.shade700,
-                      ),
-                      tooltip: isDark
-                          ? 'Switch to Light Mode'
-                          : 'Switch to Dark Mode',
-                    );
-                  },
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 20),
+                // Theme toggle
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ValueListenableBuilder<ThemeMode>(
+                    valueListenable: themeNotifier,
+                    builder: (_, mode, child) {
+                      final isDark = mode == ThemeMode.dark;
+                      return IconButton(
+                        onPressed: () {
+                          themeNotifier.value =
+                              isDark ? ThemeMode.light : ThemeMode.dark;
+                        },
+                        icon: Icon(
+                          isDark ? Icons.light_mode : Icons.dark_mode,
+                          color: isDark
+                              ? Colors.amber.shade400
+                              : Colors.grey.shade700,
+                        ),
+                        tooltip: isDark
+                            ? 'Switch to Light Mode'
+                            : 'Switch to Dark Mode',
+                      );
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Icon(
-                Icons.schema_outlined,
-                size: 48,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Diagram Engine',
-                style: theme.textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 8),
+                Icon(
+                  Icons.schema_outlined,
+                  size: 48,
+                  color: theme.colorScheme.primary,
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Interactive thinking tools for JEE preparation',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Diagram preview HERO (first thing user sees)
-              if (mockQuestions.isNotEmpty) ...[
-                _DiagramPreviewCard(question: mockQuestions.first),
                 const SizedBox(height: 16),
-              ],
+                Text(
+                  'Diagram Engine',
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'From Class 7 basics to JEE-level thinking, one visual step at a time',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-              // Feature chips (compact)
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _FeatureChip(
-                      icon: Icons.touch_app, label: 'Tap → Insight'),
-                  _FeatureChip(
-                      icon: Icons.assistant, label: 'Guide Me'),
-                  _FeatureChip(
-                      icon: Icons.edit, label: 'Drawing Tools'),
-                  _FeatureChip(
-                      icon: Icons.trending_up, label: 'Performance'),
-                  _FeatureChip(
-                      icon: Icons.auto_awesome, label: 'Smart Hints'),
+                // Foundation Journey HERO (primary CTA for Class 7 students)
+                _FoundationJourneyHero(
+                  onStartJourney: _startFoundationJourney,
+                ),
+                const SizedBox(height: 16),
+
+                // Diagram preview (secondary)
+                if (mockQuestions.isNotEmpty) ...[
+                  _DiagramPreviewCard(question: mockQuestions.first),
+                  const SizedBox(height: 16),
                 ],
-              ),
 
-              const SizedBox(height: 16),
+                // Feature chips (compact)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _FeatureChip(
+                        icon: Icons.visibility, label: 'Visual Reasoning'),
+                    _FeatureChip(
+                        icon: Icons.route, label: 'Foundation Journey'),
+                    _FeatureChip(icon: Icons.healing, label: 'Smart Rescue'),
+                    _FeatureChip(icon: Icons.trending_up, label: 'Diagnosis'),
+                    _FeatureChip(icon: Icons.replay, label: 'Revision Mastery'),
+                  ],
+                ),
 
-              // Revision nudge
-              ListenableBuilder(
-                listenable: _revisionManager,
-                builder: (context, _) {
-                  final dueCount = _revisionManager.dueCount;
-                  final mastered = _revisionManager.masteredItems.length;
-                  if (dueCount == 0 && mastered == 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    children: [
-                      if (dueCount > 0)
-                        GestureDetector(
-                          onTap: _startRevision,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.purple.shade50,
-                                  Colors.deepPurple.shade50,
+                const SizedBox(height: 16),
+
+                // Revision nudge
+                ListenableBuilder(
+                  listenable: _revisionManager,
+                  builder: (context, _) {
+                    final dueCount = _revisionManager.dueCount;
+                    final mastered = _revisionManager.masteredItems.length;
+                    if (dueCount == 0 && mastered == 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      children: [
+                        if (dueCount > 0)
+                          GestureDetector(
+                            onTap: _startRevision,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.purple.shade50,
+                                    Colors.deepPurple.shade50,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(14),
+                                border:
+                                    Border.all(color: Colors.purple.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.shade100,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(Icons.replay,
+                                        size: 20,
+                                        color: Colors.purple.shade700),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Flexible(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '$dueCount question${dueCount > 1 ? 's' : ''} to revise today',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: Colors.purple.shade800,
+                                          ),
+                                        ),
+                                        Text(
+                                          '~${_revisionManager.estimatedMinutes} min · Tap to start',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.purple.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Icon(Icons.arrow_forward_ios,
+                                      size: 14, color: Colors.purple.shade400),
                                 ],
                               ),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                  color: Colors.purple.shade200),
+                            ),
+                          ),
+                        if (mastered > 0) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.green.shade200),
                             ),
                             child: Row(
                               children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.purple.shade100,
-                                    borderRadius:
-                                        BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(Icons.replay,
-                                      size: 20,
-                                      color: Colors.purple.shade700),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '$dueCount question${dueCount > 1 ? 's' : ''} to revise today',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color:
-                                              Colors.purple.shade800,
-                                        ),
-                                      ),
-                                      Text(
-                                        '~${_revisionManager.estimatedMinutes} min · Tap to start',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color:
-                                              Colors.purple.shade600,
-                                        ),
-                                      ),
-                                    ],
+                                Icon(Icons.check_circle,
+                                    size: 16, color: Colors.green.shade600),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '$mastered question${mastered > 1 ? 's' : ''} mastered',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                Icon(Icons.arrow_forward_ios,
-                                    size: 14,
-                                    color: Colors.purple.shade400),
                               ],
                             ),
                           ),
-                        ),
-                      if (mastered > 0) ...[
+                        ],
                         const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                                color: Colors.green.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.check_circle,
-                                  size: 16,
-                                  color: Colors.green.shade600),
-                              const SizedBox(width: 8),
-                              Text(
-                                '$mastered question${mastered > 1 ? 's' : ''} mastered',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.green.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ],
-                      const SizedBox(height: 8),
-                    ],
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
 
-              const Spacer(),
+                const SizedBox(height: 24),
 
-              // Premium tier toggle
-              ListenableBuilder(
-                listenable: _premiumState,
-                builder: (context, _) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      gradient: _premiumState.isPremium
-                          ? LinearGradient(colors: [
-                              Colors.amber.shade50,
-                              Colors.orange.shade50,
-                            ])
-                          : null,
-                      color: _premiumState.isPremium
-                          ? null
-                          : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
+                // Premium tier toggle
+                ListenableBuilder(
+                  listenable: _premiumState,
+                  builder: (context, _) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: _premiumState.isPremium
+                            ? LinearGradient(colors: [
+                                Colors.amber.shade50,
+                                Colors.orange.shade50,
+                              ])
+                            : null,
                         color: _premiumState.isPremium
-                            ? Colors.amber.shade300
-                            : Colors.grey.shade300,
+                            ? null
+                            : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _premiumState.isPremium
+                              ? Colors.amber.shade300
+                              : Colors.grey.shade300,
+                        ),
                       ),
+                      child: Row(
+                        children: [
+                          if (_premiumState.isPremium)
+                            const PremiumBadge()
+                          else
+                            Icon(Icons.lock_outline,
+                                size: 18, color: Colors.grey.shade600),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _premiumState.isPremium
+                                      ? 'Premium Active'
+                                      : 'Free Tier',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: _premiumState.isPremium
+                                        ? Colors.amber.shade900
+                                        : Colors.grey.shade800,
+                                  ),
+                                ),
+                                Text(
+                                  _premiumState.isPremium
+                                      ? 'All features unlocked'
+                                      : 'Upgrade for insights, drawing & more',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: _premiumState.isPremium
+                                        ? Colors.amber.shade700
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _premiumState.isPremium,
+                            onChanged: (_) {
+                              _premiumState.toggle();
+                              setState(() {});
+                            },
+                            activeTrackColor: Colors.amber.shade200,
+                            thumbColor:
+                                WidgetStateProperty.resolveWith((states) {
+                              if (states.contains(WidgetState.selected)) {
+                                return Colors.amber.shade700;
+                              }
+                              return null;
+                            }),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Practice Mode Selector (Foundation Journey prioritized)
+                Column(
+                  children: [
+                    // Primary: Foundation Journey
+                    _ModeChip(
+                      label: 'Foundation Journey',
+                      icon: Icons.route,
+                      isSelected:
+                          _selectedMode == PracticeMode.foundationJourney,
+                      color: Colors.green,
+                      onTap: () => setState(
+                          () => _selectedMode = PracticeMode.foundationJourney),
+                      isFullWidth: true,
+                      isPrimary: true,
                     ),
-                    child: Row(
+                    const SizedBox(height: 8),
+                    // Secondary modes
+                    Row(
                       children: [
-                        if (_premiumState.isPremium)
-                          const PremiumBadge()
-                        else
-                          Icon(Icons.lock_outline,
-                              size: 18, color: Colors.grey.shade600),
-                        const SizedBox(width: 10),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _premiumState.isPremium
-                                    ? 'Premium Active'
-                                    : 'Free Tier',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
-                                  color: _premiumState.isPremium
-                                      ? Colors.amber.shade900
-                                      : Colors.grey.shade800,
-                                ),
-                              ),
-                              Text(
-                                _premiumState.isPremium
-                                    ? 'All features unlocked'
-                                    : 'Upgrade for insights, drawing & more',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: _premiumState.isPremium
-                                      ? Colors.amber.shade700
-                                      : Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
+                          child: _ModeChip(
+                            label: 'Learner',
+                            icon: Icons.school,
+                            isSelected: _selectedMode == PracticeMode.learner,
+                            color: Colors.blue,
+                            onTap: () => setState(
+                                () => _selectedMode = PracticeMode.learner),
                           ),
                         ),
-                        Switch(
-                          value: _premiumState.isPremium,
-                          onChanged: (_) {
-                            _premiumState.toggle();
-                            setState(() {});
-                          },
-                          activeTrackColor: Colors.amber.shade200,
-                          activeThumbColor: Colors.amber.shade700,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _ModeChip(
+                            label: 'Mock Exam',
+                            icon: Icons.timer,
+                            isSelected: _selectedMode == PracticeMode.mockExam,
+                            color: Colors.red,
+                            onTap: () => setState(
+                                () => _selectedMode = PracticeMode.mockExam),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _ModeChip(
+                            label: 'Revision',
+                            icon: Icons.replay,
+                            isSelected: _selectedMode == PracticeMode.revision,
+                            color: Colors.purple,
+                            onTap: () => setState(
+                                () => _selectedMode = PracticeMode.revision),
+                          ),
                         ),
                       ],
                     ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: SizedBox(
-                      height: 56,
-                      child: FilledButton.icon(
-                        onPressed: _startPractice,
-                        icon: const Icon(Icons.play_arrow),
-                        label: Text(
-                          'Solve with Interactive Diagrams (${mockQuestions.length})',
-                          style: const TextStyle(fontSize: 15),
+                // Buttons
+                Row(
+                  children: [
+                    Flexible(
+                      flex: 3,
+                      fit: FlexFit.loose,
+                      child: SizedBox(
+                        height: 56,
+                        child: FilledButton.icon(
+                          onPressed: _selectedMode == PracticeMode.revision
+                              ? _startRevision
+                              : _startPractice,
+                          icon: const Icon(Icons.play_arrow),
+                          label: Text(
+                            _selectedMode == PracticeMode.foundationJourney
+                                ? 'Start Foundation Journey'
+                                : 'Practice with Interactive Diagrams (${mockQuestions.length + algebricaQuestions.length})',
+                            style: const TextStyle(fontSize: 15),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    height: 56,
-                    width: 56,
-                    child: OutlinedButton(
-                      onPressed: _showPerformanceSummary,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 56,
+                      width: 56,
+                      child: OutlinedButton(
+                        onPressed: _showPerformanceSummary,
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Icon(Icons.bar_chart),
                       ),
-                      child: const Icon(Icons.bar_chart),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Topic Revision Button with Animations
+                SizedBox(
+                  height: 56,
+                  width: double.infinity,
+                  child: FilledButton.tonalIcon(
+                    onPressed: _startTopicRevision,
+                    icon: const Icon(Icons.animation),
+                    label: const Text(
+                      'Revise Topics with Animations',
+                      style: TextStyle(fontSize: 15),
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),
@@ -423,11 +543,10 @@ class _DiagramPreviewCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             alignment: Alignment.center,
-            child:
-                Icon(Icons.schema, size: 28, color: Colors.indigo.shade600),
+            child: Icon(Icons.schema, size: 28, color: Colors.indigo.shade600),
           ),
           const SizedBox(width: 12),
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -458,8 +577,7 @@ class _DiagramPreviewCard extends StatelessWidget {
                     ),
                     if (question.estimatedSeconds != null) ...[
                       const SizedBox(width: 4),
-                      _miniChip(
-                          '~${question.estimatedSeconds}s', Colors.grey),
+                      _miniChip('~${question.estimatedSeconds}s', Colors.grey),
                     ],
                   ],
                 ),
@@ -477,7 +595,7 @@ class _DiagramPreviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withOpacity(0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -629,7 +747,7 @@ class _TopicRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -657,13 +775,293 @@ class _TopicRow extends StatelessWidget {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: performance.accuracy,
-                backgroundColor: color.withValues(alpha: 0.15),
+                backgroundColor: color.withOpacity(0.15),
                 color: color,
                 minHeight: 6,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FoundationJourneyHero extends StatelessWidget {
+  final VoidCallback onStartJourney;
+
+  const _FoundationJourneyHero({required this.onStartJourney});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.green.shade50,
+            Colors.teal.shade50,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.green.shade200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.shade100.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.route,
+                  size: 28,
+                  color: Colors.green.shade700,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Start Foundation Journey',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                    Text(
+                      'Build the foundations before solving the exam',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.green.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: FilledButton.icon(
+                  onPressed: onStartJourney,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Start Journey'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    // Show journey info
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Learn more about Foundation Journey'),
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.info_outline, color: Colors.green.shade600),
+                  label: Text(
+                    'Learn More',
+                    style: TextStyle(color: Colors.green.shade600),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.green.shade300),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _HeroFeature(
+                icon: Icons.school,
+                label: 'Class 7 Start',
+                color: Colors.green,
+              ),
+              const SizedBox(width: 16),
+              _HeroFeature(
+                icon: Icons.trending_up,
+                label: 'Step-by-Step',
+                color: Colors.green,
+              ),
+              const SizedBox(width: 16),
+              _HeroFeature(
+                icon: Icons.emoji_events,
+                label: 'JEE Bridge',
+                color: Colors.green,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroFeature extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final MaterialColor color;
+
+  const _HeroFeature({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: color.shade600,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: color.shade700,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isFullWidth;
+  final bool isPrimary;
+
+  const _ModeChip({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+    this.isFullWidth = false,
+    this.isPrimary = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final containerWidth = isFullWidth ? double.infinity : null;
+
+    if (isPrimary) {
+      // Primary Foundation Journey chip style
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: containerWidth,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: isSelected ? color : color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? color : color.withOpacity(0.3),
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: isSelected ? Colors.white : color,
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : color,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Regular mode chip style
+    return Material(
+      color: isSelected ? color.withOpacity(0.15) : Colors.grey.shade200,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 20, color: isSelected ? color : Colors.grey.shade600),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? color : Colors.grey.shade700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

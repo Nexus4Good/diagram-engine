@@ -1,24 +1,80 @@
 # Diagram Engine
 
-Interactive diagram runtime for JEE exam preparation — built with Flutter.
+Diagram Engine is a visual STEM learning system that helps school students build the reasoning skills needed for future competitive exams.
 
-Diagrams are **interactive thinking tools**, not static images. Students can zoom, tap, highlight, toggle layers, and expand to fullscreen — all while keeping the question context visible.
+Instead of showing hard JEE questions directly, the app guides students from familiar classroom concepts to advanced problem-solving through interactive diagrams, micro-lessons, prerequisite ladders, smart rescue questions, and revision loops.
 
-## Features
+The first target user is a Class 7 student aspiring toward JEE-level thinking.
 
-### Split Focus UI
-- **Mobile**: Top 45% diagram, bottom 55% question + options
-- **Desktop/Wide**: Side-by-side layout
-- Student never "leaves" the question context
+> From Class 7 basics to JEE-level thinking, one visual step at a time.
 
-### Interactive Diagrams
-- **Zoom & Pan** — smooth `InteractiveViewer` with pinch/scroll support
-- **Tap to Highlight** — tap any element (point, line, circle, region) to highlight it
-- **Layer Toggles** — show/hide values, hints, and labels independently
-- **Fullscreen Expand** — diagram goes fullscreen with floating question overlay
+## Mission
 
-### Structured Data Model
-Diagrams are stored as **structured JSON**, not images:
+Help school students build visual STEM reasoning from familiar classroom concepts to competitive-exam-level problem solving, without losing confidence.
+
+The mission is not to make Class 7 students solve JEE papers immediately. It is to build the mental bridge that makes JEE-level thinking feel reachable.
+
+## Vision
+
+Become a visual STEM bridge system where every advanced exam question is broken into prerequisite concepts, interactive diagrams, micro-lessons, rescue paths, repair sessions, and revision loops.
+
+The app is not trying to be another question bank. It is a learning engine that converts school-level understanding into future JEE thinking.
+
+## Current Focus
+
+The current product focus is the **Class 7 JEE Foundation Geometry MVP**.
+
+The first complete proof is:
+
+```text
+Square
+-> central angle
+-> regular polygon
+-> hexagon
+-> octagon
+-> simplified JEE-style question
+-> original JEE-level question
+```
+
+This validates the core promise: a Class 7 student can reach a hard JEE-style idea step by step without dropping off.
+
+## Product Pillars
+
+| Pillar | Meaning |
+| --- | --- |
+| Visual reasoning | Diagrams are thinking tools, not decorations |
+| Foundation journey | Start from Class 7 concepts before JEE-level questions |
+| Smart rescue | If the student fails, move backward to a familiar concept |
+| Diagnosis and repair | Mock exams expose gaps; repair sessions close them |
+| Revision and mastery | Concepts are repeated until confidence and accuracy improve |
+
+## What Exists Now
+
+- Foundation Journey mode for the geometry bridge path.
+- Interactive diagram runtime with zoom, pan, tap highlighting, layers, fullscreen, and drawing tools.
+- Learner, mock exam, revision, and Foundation Journey practice modes.
+- Smart rescue primitives for prerequisite-based fallback questions.
+- Per-option why-wrong explanations, reveal steps, concept feedback, and weak-area nudges.
+- Content validation for app sample questions, rescue ladders, and journey assets.
+- Flutter CI workflow for analyze, tests, and build validation.
+
+## Learning Flow
+
+```text
+Foundation Journey
+-> Learner Mode
+-> Mock Exam
+-> Diagnosis
+-> Repair Session
+-> Revision Loop
+-> Mastery
+```
+
+The immediate MVP concentrates on the first step: one polished Geometry Foundation Journey from school geometry to a JEE-level regular polygon idea.
+
+## Content Model
+
+Diagrams and learning content are structured data, not static screenshots.
 
 ```json
 {
@@ -31,90 +87,58 @@ Diagrams are stored as **structured JSON**, not images:
 ```
 
 This enables:
-- Element-level interactivity (tap detection, highlighting)
-- Layer-based visibility (values, hints, labels)
-- Future AI parsing ("Explain this diagram", "Generate similar question")
 
-### Supported Element Types
-- `point` — labeled vertices
-- `line` — solid and dashed lines
-- `circle` — circles with center + radius
-- `arc` — partial arcs with angle control
-- `polygon` — filled polygons
-- `region` — highlighted areas (e.g., triangle in octagon)
-- `angle` — angle markers with labels
-- `label` — text annotations (values, hints)
-- `vector` — arrows with direction
+- Element-level interactivity, hit testing, and highlighting.
+- Layer-based visibility for values, hints, and labels.
+- Step-by-step reveal panels tied to diagram elements.
+- Future content generation and diagram explanation workflows.
 
-### Context-Aware Rendering
-- **Geometry**: Points, lines, polygons, angles, regions
-- **Physics**: Circuit nodes, resistor connections, current labels
-- **Chemistry**: Molecular structures (future)
-- **Graphs**: Coordinate geometry with axes (future)
+## Architecture
 
-## Mock Content
-Includes 5 JEE-style questions:
-1. Regular octagon area calculation
-2. Triangle angle bisector theorem
-3. Circle chord and arc ratio
-4. Wheatstone bridge circuit
-5. Star-delta resistor network
+```text
+lib/
++-- main.dart
++-- data/                         # In-app question sets
++-- models/                       # Question, diagram, journey, rescue, mastery models
++-- screens/                      # Home, question, foundation journey, revision screens
++-- services/                     # Content loading
++-- widgets/                      # Diagram canvas, painter, question panel, controls
+
+content/
++-- journeys/                     # Content-driven foundation journeys
++-- sample_questions/             # App-ready sample questions and rescue ladders
++-- math/                         # Concept maps
++-- ncert/                        # School concept alignment
++-- rescue_ladders/               # Prerequisite rescue paths
+
+test/
++-- content_validation_test.dart
++-- foundation_journey_test.dart
++-- rescue_flow_test.dart
++-- widget_test.dart
+```
 
 ## Getting Started
 
 ```bash
-# Install Flutter (3.41+)
-flutter --version
-
-# Get dependencies
 flutter pub get
-
-# Run on web
 flutter run -d chrome
-
-# Run analyzer
 flutter analyze
-
-# Run tests
 flutter test
+flutter build web
 ```
 
-## Architecture
+In this WSL workspace, Flutter is available at:
 
-```
-lib/
-├── main.dart                    # App entry point
-├── models/
-│   ├── diagram_element.dart     # Element types + properties
-│   ├── diagram_data.dart        # Diagram container model
-│   └── question_data.dart       # Question with diagram + options
-├── data/
-│   └── mock_questions.dart      # 5 JEE mock questions
-├── widgets/
-│   ├── diagram_painter.dart     # CustomPainter for all element types
-│   ├── diagram_canvas.dart      # InteractiveViewer + hit testing
-│   ├── question_panel.dart      # Question text + option tiles
-│   ├── fullscreen_diagram.dart  # Fullscreen mode with overlay
-│   └── layer_toggle.dart        # Values/Hints/Labels toggle bar
-└── screens/
-    ├── home_screen.dart         # Landing page with feature cards
-    └── question_screen.dart     # Split Focus layout + navigation
+```bash
+/home/vashista/flutter/bin/flutter
 ```
 
-## Roadmap
+## Execution Priorities
 
-- [ ] Phase 1: SVG rendering + zoom/pan + tap highlight (done)
-- [ ] Phase 2: Layer toggles + fullscreen expand (done)
-- [ ] Phase 3: Drawing layer (vectors, angles, point marking)
-- [ ] Phase 4: AI-enhanced diagram parsing
-- [ ] Phase 5: Real JEE content integration
+1. Stabilize content pipeline and CI.
+2. Keep Foundation Journey asset and dependency loading green.
+3. Merge and polish post-exam diagnosis after selected-answer tracking is solid.
+4. Build one polished Geometry Foundation Journey end-to-end.
 
-## Tech Decisions
-
-| Decision | Choice | Why |
-|----------|--------|-----|
-| Rendering | `CustomPainter` | Full control over interactivity, no SVG parsing overhead |
-| Data format | Structured JSON | Enables AI parsing, element-level interaction |
-| Hit testing | Geometric (distance/polygon) | Works for all element types without DOM |
-| State | `setState` | Simple enough for MVP, upgrade to Riverpod later |
-| Platform | Web first | Easy to demo, mobile follows same code |
+Do not expand to algebra, physics, chemistry, or dynamic generation until the first geometry journey works beautifully.
