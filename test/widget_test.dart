@@ -1,30 +1,44 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:diagram_engine/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+  testWidgets('App launches and shows home screen', (tester) async {
+    await tester.pumpWidget(const DiagramEngineApp());
+    expect(find.text('Diagram Engine'), findsOneWidget);
+    expect(find.text('Start Foundation Journey'), findsWidgets);
+    expect(find.text('Visual Reasoning'), findsOneWidget);
+    expect(find.text('Smart Rescue'), findsOneWidget);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('Navigate to question screen', (tester) async {
+    await tester.pumpWidget(const DiagramEngineApp());
+    final learnerMode = find.text('Learner');
+    await tester.scrollUntilVisible(learnerMode, 400);
+    await tester.tap(learnerMode);
+    await tester.pumpAndSettle();
+    final learnerCta =
+        find.textContaining('Practice with Interactive Diagrams');
+    await tester.scrollUntilVisible(learnerCta, 400);
+    await tester.tap(learnerCta);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Q1 of'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Navigate to Foundation Journey and load content',
+      (tester) async {
+    await tester.pumpWidget(const DiagramEngineApp());
+    final journeyCta = find.text('Start Journey');
+    await tester.ensureVisible(journeyCta);
+    await tester.tap(journeyCta);
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Foundation Journey'), findsWidgets);
+    expect(find.text('From Square to JEE Octagon'), findsOneWidget);
+    expect(find.text('Familiar: Square Parts'), findsWidgets);
   });
 }
